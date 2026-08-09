@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XPOS - نظام KStore لإدارة المحلات</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ============================================================
+                   1.  المتغيرات
+                   ============================================================ */
+        :root {
+            --color-orange: #FF6B35;
+            --color-gold: #F5A623;
+            --color-pink: #FF6B9D;
+            --color-red: #FF4757;
+            --color-blue: #4A90D9;
+            --color-cyan: #6BB8F7;
+            --color-purple: #8B5CF6;
+            --color-green: #2ED573;
+
+            --gradient-orange: linear-gradient(135deg, var(--color-orange), var(--color-gold));
+            --gradient-pink: linear-gradient(135deg, var(--color-pink), var(--color-red));
+            --gradient-blue: linear-gradient(135deg, var(--color-blue), var(--color-cyan));
+            --gradient-mix: linear-gradient(135deg, var(--color-orange), var(--color-pink), var(--color-blue));
+
+            --bg-body: #F5F7FA;
+            --bg-card: #FFFFFF;
+            --bg-card-hover: #F8F9FE;
+
+            --text-main: #1A1A2E;
+            --text-sub: #4A4A6A;
+            --text-light: #8A8AAA;
+
+            --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ============================================================
+                   2.  الوضع الداكن
+                   ============================================================ */
+        [data-theme="dark"] {
+            --bg-body: #1A1A2E;
+            --bg-card: rgba(255, 255, 255, 0.06);
+            --bg-card-hover: rgba(255, 255, 255, 0.1);
+            --text-main: #FFFFFF;
+            --text-sub: #B0B0C8;
+            --text-light: #7A7A9A;
+            --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ============================================================
+                   3.  إعدادات عامة
+                   ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            font-weight: 400;
+            background: var(--bg-body);
+            color: var(--text-main);
+            line-height: 2;
+            font-size: 20px;
+            overflow-x: hidden;
+            min-height: 100vh;
+            transition: background 0.6s ease, color 0.4s ease;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        ul {
+            list-style: none;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ============================================================
+                   4.  الهيدر - مع تأثير الاختفاء والبلور
+                   ============================================================ */
+        header {
+            background: rgba(26, 26, 46, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 20px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            border-bottom: 3px solid var(--color-gold);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* الهيدر يختفي عند النزول */
+        header.hide {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+
+        /* الهيدر يظهر عند الصعود */
+        header.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            direction: ltr;
+        }
+
+        .brand-logo img {
+            height: 70px;
+            width: auto;
+            display: block;
+        }
+
+        .brand-text {
+            font-size: 2.6rem;
+            font-weight: 900;
+            color: #FFFFFF;
+            transition: all 0.4s ease;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 35px;
+        }
+
+        .nav-links a {
+            font-weight: 700;
+            color: #FFFFFF;
+            font-size: 1.15rem;
+            position: relative;
+            padding-bottom: 4px;
+            transition: 0.3s ease;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 2px;
+            background: var(--color-gold);
+            transition: 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-links a:hover {
+            color: var(--color-gold);
+        }
+
+        .theme-switch {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #FFFFFF;
+            font-size: 1.3rem;
+            transition: all 0.4s ease;
+        }
+
+        .theme-switch:hover {
+            transform: rotate(45deg) scale(1.1);
+            background: var(--gradient-mix);
+            color: white;
+            border-color: transparent;
+        }
+
+        .hamburger {
+            display: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #FFFFFF;
+        }
+
+        /* مساحة للهيدر عشان المحتوى مايختفي تحته */
+        .header-spacer {
+            height: 120px;
+            width: 100%;
+        }
+
+        /* ============================================================
+                   5.  باقي الستايلات (نفس الكود السابق)
+                   ============================================================ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 42px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+            font-family: 'Cairo', sans-serif;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+
+        .btn:hover::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            transform: translateY(-4px) scale(1.04);
+        }
+
+        .btn-orange {
+            background: var(--gradient-orange);
+            color: white;
+            box-shadow: 0 8px 30px rgba(255, 107, 53, 0.35);
+        }
+        .btn-orange:hover {
+            box-shadow: 0 15px 45px rgba(255, 107, 53, 0.5);
+        }
+
+        .btn-pink {
+            background: var(--gradient-pink);
+            color: white;
+            box-shadow: 0 8px 30px rgba(255, 107, 157, 0.35);
+        }
+        .btn-pink:hover {
+            box-shadow: 0 15px 45px rgba(255, 107, 157, 0.5);
+        }
+
+        .btn-blue {
+            background: var(--gradient-blue);
+            color: white;
+            box-shadow: 0 8px 30px rgba(74, 144, 217, 0.35);
+        }
+        .btn-blue:hover {
+            box-shadow: 0 15px 45px rgba(74, 144, 217, 0.5);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--color-blue);
+            border: 2px solid var(--color-blue);
+        }
+        .btn-outline:hover {
+            background: var(--color-blue);
+            color: white;
+        }
+
+        .hero {
+            padding: 80px 0 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-image {
+            background: var(--bg-card);
+            border-radius: 28px;
+            padding: 12px;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        [data-theme="dark"] .hero-image {
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+        .hero-image img {
+            border-radius: 20px;
+            width: 100%;
+            display: block;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .hero-image:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: var(--shadow-lg);
+        }
+        .hero-image:hover img {
+            transform: scale(1.02);
+        }
+
+        .hero-text h1 {
+            font-size: 4.2rem;
+            line-height: 1.1;
+            font-weight: 900;
+            margin-bottom: 20px;
+        }
+        .hero-text h1 .highlight-orange {
+            color: var(--color-orange);
+        }
+        .hero-text h1 .highlight-pink {
+            color: var(--color-pink);
+        }
+        .hero-text h1 .highlight-gold {
+            color: var(--color-gold);
+        }
+        .hero-text h1 .highlight-blue {
+            color: var(--color-cyan);
+        }
+
+        .hero-text p {
+            font-size: 1.3rem;
+            color: var(--text-sub);
+            margin-bottom: 32px;
+            max-width: 90%;
+            line-height: 2.1;
+            font-weight: 500;
+        }
+        .hero-text p strong {
+            color: var(--color-gold);
+            font-weight: 800;
+        }
+
+        .hero-badges {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .hero-badge {
+            background: var(--bg-card);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 10px 22px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        [data-theme="dark"] .hero-badge {
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+        .hero-badge i {
+            color: var(--color-gold);
+            transition: 0.3s ease;
+        }
+        .hero-badge:hover {
+            transform: translateY(-4px) scale(1.05);
+            background: var(--color-gold);
+            color: white;
+            border-color: var(--color-gold);
+        }
+        .hero-badge:hover i {
+            color: white;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .stats-wrapper {
+            background: var(--bg-card);
+            border-radius: 28px;
+            padding: 55px 40px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        [data-theme="dark"] .stats-wrapper {
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+        .stats-wrapper:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: var(--gradient-mix);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-item p {
+            font-size: 1.1rem;
+            color: var(--text-sub);
+            font-weight: 700;
+        }
+
+        .section {
+            padding: 80px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title h2 {
+            font-size: 3.2rem;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+        .section-title h2 .gold {
+            color: var(--color-gold);
+        }
+        .section-title h2 .orange {
+            color: var(--color-orange);
+        }
+        .section-title h2 .pink {
+            color: var(--color-pink);
+        }
+        .section-title h2 .blue {
+            color: var(--color-cyan);
+        }
+
+        .section-title p {
+            color: var(--text-sub);
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            padding: 40px 24px;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        [data-theme="dark"] .feature-card {
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0;
+            transition: 0.5s ease;
+            z-index: 0;
+        }
+        .feature-card:hover::before {
+            opacity: 0.04;
+        }
+        .feature-card>* {
+            position: relative;
+            z-index: 1;
+        }
+        .feature-card:hover {
+            transform: translateY(-12px) scale(1.01);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.12);
+        }
+
+        .feature-card:nth-child(1) .feature-icon {
+            background: var(--gradient-orange);
+        }
+        .feature-card:nth-child(2) .feature-icon {
+            background: var(--gradient-pink);
+        }
+        .feature-card:nth-child(3) .feature-icon {
+            background: var(--gradient-blue);
+        }
+        .feature-card:nth-child(4) .feature-icon {
+            background: linear-gradient(135deg, var(--color-gold), var(--color-orange));
+        }
+        .feature-card:nth-child(5) .feature-icon {
+            background: linear-gradient(135deg, var(--color-pink), var(--color-purple));
+        }
+        .feature-card:nth-child(6) .feature-icon {
+            background: linear-gradient(135deg, var(--color-cyan), var(--color-blue));
+        }
+
+        .feature-icon {
+            width: 76px;
+            height: 76px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            margin: 0 auto 20px;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .feature-card:hover .feature-icon {
+            transform: scale(1.15) rotate(-8deg) translateY(-4px);
+        }
+
+        .feature-card h3 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .feature-card p {
+            color: var(--text-sub);
+            font-size: 1.05rem;
+            font-weight: 500;
+            line-height: 1.9;
+        }
+
+        .restaurant-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            align-items: center;
+        }
+
+        .restaurant-text h2 {
+            font-size: 3.2rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+        }
+
+        .restaurant-text h2 .pink {
+            color: var(--color-pink);
+        }
+
+        .restaurant-text p {
+            color: var(--text-sub);
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .restaurant-text ul li {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-weight: 700;
+            color: var(--text-sub);
+            font-size: 1.15rem;
+            transition: all 0.3s ease;
+        }
+
+        .restaurant-text ul li:hover {
+            transform: translateX(-6px);
+            color: var(--text-main);
+        }
+
+        .restaurant-text ul li i {
+            font-size: 1.4rem;
+            width: 30px;
+            transition: 0.3s ease;
+        }
+
+        .restaurant-text ul li:hover i {
+            transform: scale(1.2);
+        }
+
+        .restaurant-text ul li:nth-child(1) i {
+            color: var(--color-orange);
+        }
+        .restaurant-text ul li:nth-child(2) i {
+            color: var(--color-gold);
+        }
+        .restaurant-text ul li:nth-child(3) i {
+            color: var(--color-pink);
+        }
+
+        .kitchen-display-mockup {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow: var(--shadow-md);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        [data-theme="dark"] .kitchen-display-mockup {
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+        .kitchen-display-mockup:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .kitchen-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding-bottom: 12px;
+            color: var(--text-sub);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        [data-theme="dark"] .kitchen-header {
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+
+        .status-badge {
+            background: var(--gradient-orange);
+            color: white;
+            padding: 4px 20px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+
+        .kitchen-order {
+            background: rgba(0, 0, 0, 0.02);
+            padding: 16px 20px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+        [data-theme="dark"] .kitchen-order {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+        .kitchen-order:hover {
+            border-color: rgba(0, 0, 0, 0.1);
+            transform: translateX(-5px) scale(1.01);
+            background: var(--bg-card-hover);
+        }
+        [data-theme="dark"] .kitchen-order:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .kitchen-order span {
+            padding: 4px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            color: white;
+            font-weight: 700;
+        }
+        .kitchen-order span.status-orange {
+            background: var(--color-orange);
+        }
+        .kitchen-order span.status-cyan {
+            background: var(--color-cyan);
+        }
+        .kitchen-order span.status-gold {
+            background: var(--color-gold);
+            color: var(--text-main);
+        }
+
+        .cta-wrapper {
+            background: var(--bg-card);
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 50px 45px;
+            border-radius: 28px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        [data-theme="dark"] .cta-wrapper {
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+        .cta-wrapper:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .cta-wrapper h3 {
+            margin-bottom: 16px;
+            font-size: 2.4rem;
+            font-weight: 900;
+        }
+
+        .cta-wrapper h3 .gold {
+            color: var(--color-gold);
+        }
+        .cta-wrapper h3 .pink {
+            color: var(--color-pink);
+        }
+
+        .cta-wrapper p {
+            color: var(--text-sub);
+            margin-bottom: 28px;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .cta-form input,
+        .cta-form select {
+            width: 100%;
+            padding: 20px;
+            margin-bottom: 14px;
+            background: var(--bg-body);
+            color: var(--text-main);
+            border: 2px solid rgba(0, 0, 0, 0.06);
+            border-radius: 16px;
+            outline: none;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-size: 1.1rem;
+            font-family: 'Cairo', sans-serif;
+            font-weight: 600;
+        }
+        [data-theme="dark"] .cta-form input,
+        [data-theme="dark"] .cta-form select {
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+
+        .cta-form input::placeholder {
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        .cta-form input:hover,
+        .cta-form select:hover {
+            transform: scale(1.01);
+            border-color: var(--color-cyan);
+        }
+
+        .cta-form input:focus,
+        .cta-form select:focus {
+            border-color: var(--color-gold);
+            box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.1);
+            transform: scale(1.02);
+        }
+
+        .cta-form select option {
+            background: var(--bg-body);
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .cta-form button {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.2rem;
+            justify-content: center;
+        }
+
+        .success-message {
+            display: none;
+            background: rgba(46, 213, 115, 0.1);
+            color: #2ED573;
+            padding: 18px;
+            border-radius: 16px;
+            margin-top: 16px;
+            font-weight: 700;
+            border: 1px solid rgba(46, 213, 115, 0.2);
+            font-size: 1.1rem;
+        }
+        .success-message.show {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        footer {
+            background: #1A1A2E;
+            padding: 55px 0 30px;
+            margin-top: 40px;
+            border-top: 3px solid var(--color-gold);
+            transition: 0.4s ease;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 45px;
+            margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .footer-col h4 {
+            margin-bottom: 18px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            position: relative;
+            padding-bottom: 12px;
+        }
+
+        .footer-col h4::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 35px;
+            height: 2px;
+            background: var(--color-gold);
+            border-radius: 2px;
+        }
+
+        .footer-col ul li {
+            margin-bottom: 12px;
+        }
+
+        .footer-col ul li a {
+            color: #FFFFFF;
+            transition: all 0.3s ease;
+            display: inline-block;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .footer-col ul li a:hover {
+            color: var(--color-gold);
+            transform: translateX(-6px) scale(1.02);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .footer-bottom strong {
+            color: var(--color-gold);
+            font-weight: 800;
+        }
+
+        .whatsapp-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #25D366;
+            color: white;
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            box-shadow: 0 8px 30px rgba(37, 211, 102, 0.4);
+            z-index: 999;
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .whatsapp-float:hover {
+            transform: scale(1.15) rotate(-10deg);
+            box-shadow: 0 15px 50px rgba(37, 211, 102, 0.5);
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(60px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .brand-logo img {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .brand-logo:hover img {
+            transform: rotate(-8deg) scale(1.05);
+        }
+        .brand-text {
+            transition: all 0.3s ease;
+            font-weight: 900;
+        }
+        .brand-logo:hover .brand-text {
+            transform: scale(1.02);
+            letter-spacing: 2px;
+        }
+
+        /* ============================================================
+                   6.  التجاوب
+                   ============================================================ */
+        @media (max-width: 992px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-text p {
+                max-width: 100%;
+            }
+            .hero-buttons {
+                justify-content: center;
+            }
+            .hero-badges {
+                justify-content: center;
+            }
+            .restaurant-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 28px;
+            }
+            .hero-text h1 {
+                font-size: 3.4rem;
+            }
+            .header-spacer {
+                height: 105px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 85px;
+                left: 0;
+                width: 100%;
+                background: rgba(26, 26, 46, 0.98);
+                backdrop-filter: blur(20px);
+                padding: 28px;
+                gap: 18px;
+                align-items: flex-start;
+                border-bottom: 2px solid var(--color-gold);
+                box-shadow: var(--shadow-lg);
+            }
+            .nav-links.active {
+                display: flex;
+            }
+            .hamburger {
+                display: block;
+            }
+            .hero-text h1 {
+                font-size: 2.8rem;
+            }
+            .section-title h2 {
+                font-size: 2.4rem;
+            }
+            .brand-logo img {
+                height: 55px;
+            }
+            .brand-text {
+                font-size: 2rem;
+            }
+            .stats-wrapper {
+                padding: 32px 20px;
+            }
+            .stat-item h3 {
+                font-size: 2.4rem;
+            }
+            .cta-wrapper {
+                padding: 32px 20px;
+            }
+            .footer-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .header-spacer {
+                height: 90px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-text h1 {
+                font-size: 2.4rem;
+            }
+            .section-title h2 {
+                font-size: 2rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+            .btn {
+                padding: 14px 28px;
+                font-size: 1rem;
+            }
+            .brand-logo img {
+                height: 45px;
+            }
+            .brand-text {
+                font-size: 1.6rem;
+            }
+            .footer-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-links {
+                top: 75px;
+            }
+            .header-spacer {
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    الهيدر - مع تأثير الاختفاء والبلور
+    ============================================================ -->
+    <header id="mainHeader">
+        <div class="container nav-container">
+            <a href="#home" class="brand-logo">
+                <img src="xpos.png" alt="XPOS Logo">
+                <span class="brand-text">XPOS</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#features">المميزات</a></li>
+                <li><a href="#stats">الأرقام</a></li>
+                <li><a href="#restaurant">المطاعم</a></li>
+                <li><a href="#contact" class="btn btn-orange">اطلب KStore الآن</a></li>
+                <li>
+                    <button class="theme-switch" id="theme-toggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </li>
+            </ul>
+            <div class="hamburger" id="hamburger">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- مساحة للهيدر -->
+    <div class="header-spacer"></div>
+
+    <!-- ============================================================
+    باقي المحتوى (نفس الكود)
+    ============================================================ -->
+    <section class="hero" id="home">
+        <div class="container hero-content">
+            <div class="hero-image reveal">
+                <img src="./kstore.png" alt="KStore Dashboard">
+            </div>
+            <div class="hero-text reveal">
+                <h1>
+                    إدارة محلك بشكل <br>
+                    <span class="highlight-orange">أذكى</span>
+                    <span class="highlight-pink">وأسهل</span>
+                </h1>
+                <p>
+                    <strong>KStore</strong> من <strong>XPOS</strong> — نظام متكامل لإدارة نقاط البيع والمخزون.<br>
+                    تحكم كامل في المبيعات، المخزون، التقارير، والموظفين من خلال نظام واحد سهل الاستخدام.
+                </p>
+                <div class="hero-badges">
+                    <span class="hero-badge"><i class="fas fa-check-circle"></i> نسخ احتياطي</span>
+                    <span class="hero-badge"><i class="fas fa-check-circle"></i> كل الأنشطة</span>
+                    <span class="hero-badge"><i class="fas fa-check-circle"></i> تقارير دقيقة</span>
+                </div>
+                <div class="hero-buttons">
+                    <a href="#contact" class="btn btn-orange"><i class="fas fa-rocket"></i> ابدأ الآن</a>
+                    <a href="#features" class="btn btn-outline"><i class="fas fa-play"></i> تعرف على المميزات</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="stats">
+        <div class="container">
+            <div class="stats-wrapper reveal">
+                <div class="stats-grid">
+                    <div class="stat-item"><h3 id="clients-count">0</h3><p>عميل يستخدم النظام</p></div>
+                    <div class="stat-item"><h3 id="sales-count">0</h3><p>عملية بيع تتم يومياً</p></div>
+                    <div class="stat-item"><h3 id="products-count">0</h3><p>منتج مُدار داخل النظام</p></div>
+                    <div class="stat-item"><h3 id="branch-count">0</h3><p>نشاط تجاري يدعمه KStore</p></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-title reveal">
+                <h2>مميزات نظام <span class="gold">KStore</span></h2>
+                <p>مميزات مصممة لتسرع عملك وتقلل أخطائك</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fas fa-user-shield"></i></div>
+                    <h3>صلاحيات الموظفين</h3>
+                    <p>حدد صلاحيات كل موظف (كاشير، مدير، مالك) للأمان ومنع التلاعب.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>تقارير ولوحة تحكم ذكية</h3>
+                    <p>لوحة تحكم تعرض إجمالي المبيعات، الفواتير، وأداء المحل لحظياً.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fas fa-boxes"></i></div>
+                    <h3>إدارة المنتجات والمخزون</h3>
+                    <p>تعرف على المنتجات قليلة المخزون، الراكدة، والأكثر مبيعاً بدقة.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fas fa-cash-register"></i></div>
+                    <h3>نظام مبيعات (POS)</h3>
+                    <p>شاشة بيع سريعة، باركود، خصومات، وطباعة فواتير في ثوانٍ.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fas fa-utensils"></i></div>
+                    <h3>شاشة المطبخ (Kitchen Display)</h3>
+                    <p>للمطاعم والكافيهات: عرض الطلبات مباشرة على شاشة المطبخ لتنظيم العمل.</p>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fab fa-whatsapp"></i></div>
+                    <h3>تكامل مع WhatsApp</h3>
+                    <p>أرسل إشعارات الطلبات والتقارير تلقائياً للعملاء أو للمالك عبر واتساب.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="restaurant">
+        <div class="container restaurant-wrapper">
+            <div class="restaurant-text reveal">
+                <h2>حلول متكاملة <span class="pink">للمطاعم والكافيهات</span></h2>
+                <p style="margin-bottom: 20px; font-size: 1.15rem; font-weight: 500;">بيئة عمل متكاملة لتنظيم الطلبات وتقليل الأخطاء.</p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> استلام وتجهيز الطلبات بسرعة</li>
+                    <li><i class="fas fa-check-circle"></i> إرسال حالة الطلب للعميل لحظياً</li>
+                    <li><i class="fas fa-check-circle"></i> شاشة المطبخ لتقليل الأخطاء</li>
+                </ul>
+                <br>
+                <a href="#contact" class="btn btn-pink"><i class="fas fa-arrow-left"></i> اطلب النسخة الآن</a>
+            </div>
+            <div class="kitchen-display-mockup reveal">
+                <div class="kitchen-header">
+                    <h4>🍳 شاشة المطبخ</h4>
+                    <span class="status-badge">طلب جديد</span>
+                </div>
+                <div class="kitchen-order">
+                    <div><strong>طلب #102</strong><br><span style="font-weight:500; color:var(--text-light); font-size:0.95rem;">شاورما دجاج + بطاطس</span></div>
+                    <span class="status-orange">قيد التحضير</span>
+                </div>
+                <div class="kitchen-order">
+                    <div><strong>طلب #101</strong><br><span style="font-weight:500; color:var(--text-light); font-size:0.95rem;">بيتزا مارجريتا + بيبسي</span></div>
+                    <span class="status-cyan">جاهز</span>
+                </div>
+                <div class="kitchen-order">
+                    <div><strong>طلب #103</strong><br><span style="font-weight:500; color:var(--text-light); font-size:0.95rem;">وجبة برجر (لحم)</span></div>
+                    <span class="status-gold">جديد</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="contact">
+        <div class="container">
+            <div class="cta-wrapper reveal">
+                <h3>استعد لتطوير نشاطك مع <span class="gold">KStore</span></h3>
+                <p>املأ البيانات وسنقوم بالتواصل معك فوراً.</p>
+                <form class="cta-form" action="https://formspree.io/f/mnpajyzv" method="POST">
+                    <input type="text" name="name" placeholder="الاسم بالكامل" required>
+                    <input type="tel" name="phone" placeholder="رقم الهاتف" required>
+                    <input type="email" name="email" placeholder="البريد الإلكتروني (اختياري)">
+                    <input type="hidden" name="product" value="KStore System Request">
+                    <select name="business_type" required>
+                        <option value="" disabled selected>اختر نوع النشاط التجاري</option>
+                        <option value="مطعم">مطعم</option>
+                        <option value="كافيه">كافيه</option>
+                        <option value="محل ملابس">محل ملابس</option>
+                        <option value="محل أحذية">محل أحذية</option>
+                        <option value="بن وعطارة">بن وعطارة</option>
+                        <option value="سوبر ماركت">سوبر ماركت</option>
+                        <option value="بلايستيشن">بلايستيشن</option>
+                        <option value="موبايلات">موبايلات</option>
+                        <option value="إلكترونيات">إلكترونيات</option>
+                        <option value="أخرى">أخرى (اكتب محلك بالأسفل)</option>
+                    </select>
+                    <input type="text" name="other_business" placeholder="نوع آخر (اكتبه هنا)">
+                    <button type="submit" class="btn btn-orange"><i class="fas fa-paper-plane"></i> أرسل الطلب الآن</button>
+                </form>
+                <div class="success-message" id="successMsg">
+                    <i class="fas fa-check-circle"></i> شكراً لك! فريق XPOS سيتواصل معك.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
+                        <span style="font-size:2rem; font-weight:900; color:var(--color-gold);">XPOS</span>
+                        <img src="xpos.png" style="height:50px; filter:grayscale(100%) opacity:0.6;" alt="XPOS">
+                    </div>
+                    <p style="color:#FFFFFF; font-size:1.05rem; font-weight:500;">نظام KStore المتكامل لإدارة المحلات والمطاعم.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>روابط سريعة</h4>
+                    <ul>
+                        <li><a href="#home">الرئيسية</a></li>
+                        <li><a href="#features">المميزات</a></li>
+                        <li><a href="#stats">الأرقام</a></li>
+                        <li><a href="#contact">اطلب النظام</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>الدعم</h4>
+                    <ul>
+                        <li><a href="#">التعليمات</a></li>
+                        <li><a href="#">تواصل معنا</a></li>
+                        <li><a href="#">سياسة الخصوصية</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 <strong>XPOS</strong> — جميع الحقوق محفوظة | KStore</p>
+            </div>
+        </div>
+    </footer>
+
+    <a href="https://wa.me/201272999588?text=أريد%20استفسار%20عن%20نظام%20KStore" target="_blank" class="whatsapp-float">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- ============================================================
+    JAVASCRIPT
+    ============================================================ -->
+    <script>
+        // === الهيدر يختفي عند النزول ويظهر عند الصعود ===
+        let lastScroll = 0;
+        const header = document.getElementById('mainHeader');
+
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+
+            if (currentScroll > lastScroll && currentScroll > 120) {
+                // نزول للأسفل - إخفاء الهيدر
+                header.classList.add('hide');
+                header.classList.remove('show');
+            } else if (currentScroll < lastScroll) {
+                // صعود للأعلى - إظهار الهيدر
+                header.classList.remove('hide');
+                header.classList.add('show');
+            }
+
+            // إذا كنا في أعلى الصفحة نضمن ظهور الهيدر
+            if (currentScroll < 50) {
+                header.classList.remove('hide');
+                header.classList.add('show');
+            }
+
+            lastScroll = currentScroll;
+        });
+
+        // === القائمة المتنقلة ===
+        const hamburger = document.getElementById('hamburger');
+        const navLinks = document.getElementById('navLinks');
+        hamburger.addEventListener('click', () => { navLinks.classList.toggle('active'); });
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => { navLinks.classList.remove('active'); });
+        });
+
+        // === الوضع الداكن ===
+        const themeToggle = document.getElementById('theme-toggle');
+        const icon = themeToggle.querySelector('i');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const html = document.documentElement;
+            let theme = html.getAttribute('data-theme');
+            if (theme === 'dark') {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            }
+        });
+
+        // === أنيميشن الدخول ===
+        const revealElements = document.querySelectorAll('.reveal');
+        const revealOnScroll = () => {
+            const windowHeight = window.innerHeight;
+            const elementVisible = 150;
+            revealElements.forEach(reveal => {
+                const elementTop = reveal.getBoundingClientRect().top;
+                if (elementTop < windowHeight - elementVisible) {
+                    reveal.classList.add('active');
+                }
+            });
+        };
+        window.addEventListener('scroll', revealOnScroll);
+        revealOnScroll();
+
+        // === عداد الأرقام ===
+        const startCounting = (el, target) => {
+            let current = 0;
+            const increment = Math.ceil(target / 80);
+            const updateCount = () => {
+                if (current < target) {
+                    current += increment;
+                    if (current > target) current = target;
+                    el.innerText = current.toLocaleString() + (target > 200 ? '+' : '');
+                    setTimeout(updateCount, 30);
+                } else {
+                    el.innerText = target.toLocaleString() + (target > 200 ? '+' : '');
+                }
+            };
+            updateCount();
+        };
+
+        const statsSection = document.getElementById('stats');
+        const counters = {
+            clients: document.getElementById('clients-count'),
+            sales: document.getElementById('sales-count'),
+            products: document.getElementById('products-count'),
+            branches: document.getElementById('branch-count')
+        };
+        let countStarted = false;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !countStarted) {
+                    countStarted = true;
+                    startCounting(counters.clients, 450);
+                    startCounting(counters.sales, 1284);
+                    startCounting(counters.products, 2500);
+                    startCounting(counters.branches, 85);
+                }
+            });
+        }, { threshold: 0.3 });
+        observer.observe(statsSection);
+
+        // === نموذج الطلب ===
+        const form = document.querySelector('.cta-form');
+        const successMsg = document.getElementById('successMsg');
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
+                if (response.ok) {
+                    successMsg.classList.add('show');
+                    form.reset();
+                } else {
+                    alert("تم استلام طلبك! سيتواصل معك فريقنا قريباً.");
+                    form.reset();
+                }
+            } catch (error) {
+                alert("تم استلام طلبك! سيتواصل معك فريقنا قريباً.");
+                form.reset();
+            }
+        });
+    </script>
+</body>
+</html>
